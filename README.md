@@ -1,6 +1,6 @@
 # Noise Reactor
 
-A desktop tool that turns any audio file and static image into a music-reactive visual. Load a track, load an image, dial in effects, and export a finished video — all in one window.
+A desktop tool that turns an audio file and a static image into a music-reactive visual.
 
 ![Noise Reactor](doc/noise_reactor.png)
 
@@ -10,7 +10,7 @@ A desktop tool that turns any audio file and static image into a music-reactive 
 
 Noise Reactor analyzes the audio offline before playback begins. It runs a 2048-point FFT at 60 fps hops and extracts per-frame features — RMS energy, bass / mid / treble band energy, spectral centroid, spectral flux, beat events, and onset events. Those features are packed into a GPU uniform buffer each frame and drive a Vulkan fragment shader that applies effects in real time to the source image.
 
-The timeline scrubber lets you preview any moment of the audio-visual sync before committing to an export. Export pipes raw RGBA frames directly into ffmpeg via stdin, muxing the original audio into the final MP4.
+The timeline scrubber lets you preview any moment of the audio-visual sync before committing to an export. Export pipes raw RGBA frames to ffmpeg via stdin, muxing the original audio into the final MP4.
 
 ---
 
@@ -62,7 +62,7 @@ Set the resolution, frame rate, quality, and audio bitrate in the right panel be
 | Quality | High (CRF 18) · Medium (CRF 23) · Low (CRF 28) |
 | Audio bitrate | 192k · 128k · 96k |
 
-Effects fade in and out over the first and last 0.5 seconds of the export to mask the anomalous spectral features produced by zero-padded FFT windows at the audio boundaries.
+Effects fade in and out over the first and last 0.5 seconds of the export to mask spectral features produced by zero-padded FFT windows at the audio boundaries.
 
 ---
 
@@ -97,7 +97,7 @@ sudo dnf install meson ninja-build qt6-qtbase-devel vulkan-headers \
 ## Build
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/kwehage/noise-reactor.git
 cd noise-reactor
 meson setup build
 meson compile -C build
