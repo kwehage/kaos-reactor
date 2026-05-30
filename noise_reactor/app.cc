@@ -3,12 +3,17 @@
 #include "noise_reactor/audio_analyzer.h"
 #include "noise_reactor/audio_file.h"
 #include "noise_reactor/audio_frame_data.h"
+#include "noise_reactor/export_dialog.h"
 #include "noise_reactor/preview_widget.h"
 #include "noise_reactor/waveform_widget.h"
 
 #include <QAction>
 #include <QAudioOutput>
 #include <QApplication>
+#include <QMessageBox>
+#include <QProcess>
+#include <QProgressDialog>
+#include <QStandardPaths>
 #include <QMediaPlayer>
 #include <QCheckBox>
 #include <QFileDialog>
@@ -370,8 +375,85 @@ void App::toggle_playback() {
 }
 
 void App::export_video() {
-    QFileDialog::getSaveFileName(this, "Export Video", "output.mp4",
-        "Video Files (*.mp4)", nullptr, QFileDialog::DontUseNativeDialog);
+    if (analysis_.empty() || !preview_widget_->has_image()) {
+        QMessageBox::warning(this, "Export",
+            "Load both an image and an audio file before exporting.");
+        return;
+    }
+
+    const QString ffmpeg_bin = QStandardPaths::findExecutable("ffmpeg");
+    if (ffmpeg_bin.isEmpty()) {
+        QMessageBox::critical(this, "Export",
+            "ffmpeg was not found in PATH. Install it to enable export.");
+        return;
+    }
+
+    ExportDialog dialog(this);
+    if (dialog.exec() != QDialog::Accepted) return;
+
+    const ExportSettings s = dialog.settings();
+    if (s.output_path.isEmpty()) return;
+
+    const int total_frames = static_cast<int>(analysis_.duration * s.fps);
+
+    // Switch the preview to the export resolution and pause its live loop.
+    preview_widget_->set_exporting(true);
+    preview_widget_->setFixedColorBufferSize(QSize(s.width, s.height));
+
+    QProcess ffmpeg;
+    ffmpeg.start(ffmpeg_bin, {
+        "-y",
+        "-f",           "rawvideo",
+        "-pixel_format","rgba",
+        "-video_size",  QString("%1x%2").arg(s.width).arg(s.height),
+        "-framerate",   QString::number(s.fps),
+        "-i",           "pipe:0",
+        "-vcodec",      "libx264",
+        "-preset",      "fast",
+        "-crf",         "18",
+        "-pix_fmt",     "yuv420p",
+        s.output_path,
+    });
+
+    if (!ffmpeg.waitForStarted(5000)) {
+        QMessageBox::critical(this, "Export", "Failed to start ffmpeg.");
+        preview_widget_->set_exporting(false);
+        preview_widget_->setFixedColorBufferSize(QSize());
+        return;
+    }
+
+    QProgressDialog progress("Exporting video…", "Cancel", 0, total_frames, this);
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(0);
+
+    bool cancelled = false;
+    for (int i = 0; i < total_frames; ++i) {
+        if (progress.wasCanceled()) { cancelled = true; break; }
+
+        const float time_s = float(i) / float(s.fps);
+        const auto& frame  = analysis_.frames[analysis_.frame_for_time(time_s)];
+        preview_widget_->set_frame_data(frame, effect_params_);
+
+        const QImage img = preview_widget_->grabFramebuffer();
+        if (!img.isNull())
+            ffmpeg.write(reinterpret_cast<const char*>(img.constBits()),
+                         static_cast<qint64>(img.sizeInBytes()));
+
+        progress.setValue(i + 1);
+        QApplication::processEvents();
+    }
+
+    ffmpeg.closeWriteChannel();
+    ffmpeg.waitForFinished(-1);
+
+    preview_widget_->set_exporting(false);
+    preview_widget_->setFixedColorBufferSize(QSize());
+
+    if (!cancelled && ffmpeg.exitCode() == 0)
+        statusBar()->showMessage("Export complete: " + s.output_path);
+    else if (!cancelled)
+        QMessageBox::warning(this, "Export",
+            "ffmpeg exited with errors:\n" + ffmpeg.readAllStandardError());
 }
 
 } // namespace noise_reactor

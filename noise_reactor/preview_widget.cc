@@ -131,7 +131,14 @@ void PreviewWidget::render(QRhiCommandBuffer* cb) {
 
     cb->endPass();
 
-    update();
+    if (!exporting_)
+        update();
+}
+
+void PreviewWidget::set_exporting(bool exporting) {
+    exporting_ = exporting;
+    if (!exporting)
+        update();  // restart live loop when export ends
 }
 
 void PreviewWidget::releaseResources() {

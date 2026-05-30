@@ -20,6 +20,8 @@ public:
 
     void set_image(const QImage& image);
     void set_frame_data(const FrameData& frame, const EffectParams& params);
+    void set_exporting(bool exporting);
+    bool has_image() const { return !source_image_.isNull(); }
 
 protected:
     void initialize(QRhiCommandBuffer* cb) override;
@@ -42,6 +44,7 @@ private:
     QImage    source_image_{};   // original as loaded
     QImage    pending_image_{};  // possibly Y-flipped for current backend
     bool      image_dirty_{false};
+    bool      exporting_{false};
     EffectUBO ubo_data_{};
     float     time_{0.f};
 };
