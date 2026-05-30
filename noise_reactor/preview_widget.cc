@@ -26,37 +26,56 @@ static QShader load_shader(const char* filename) {
 }
 
 PreviewWidget::PreviewWidget(QWidget* parent) : QRhiWidget(parent) {
+    setApi(QRhiWidget::Api::Vulkan);
     setMinimumSize(640, 360);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
 void PreviewWidget::set_image(const QImage& image) {
-    pending_image_ = image.convertToFormat(QImage::Format_RGBA8888);
-    image_dirty_   = true;
+    source_image_ = image.convertToFormat(QImage::Format_RGBA8888);
+    // Defer backend-aware Y-flip to prepare_upload(); rhi_ may not exist yet.
+    prepare_upload();
+    image_dirty_ = true;
     update();
 }
 
 void PreviewWidget::set_frame_data(const FrameData& frame, const EffectParams& params) {
-    ubo_data_.rms                 = frame.rms;
-    ubo_data_.bass                = frame.bass;
-    ubo_data_.mid                 = frame.mid;
-    ubo_data_.treble              = frame.treble;
-    ubo_data_.spectral_centroid   = frame.spectral_centroid;
-    ubo_data_.spectral_flux       = frame.spectral_flux;
-    ubo_data_.beat                = frame.beat  ? 1.f : 0.f;
-    ubo_data_.onset               = frame.onset ? 1.f : 0.f;
-    ubo_data_.zoom_intensity      = params.zoom_intensity;
-    ubo_data_.wave_intensity      = params.wave_intensity;
-    ubo_data_.hue_shift_intensity = params.hue_shift_intensity;
-    ubo_data_.glitch_intensity    = params.glitch_intensity;
-    ubo_data_.glow_intensity      = params.glow_intensity;
+    ubo_data_.rms                    = frame.rms;
+    ubo_data_.bass                   = frame.bass;
+    ubo_data_.mid                    = frame.mid;
+    ubo_data_.treble                 = frame.treble;
+    ubo_data_.spectral_centroid      = frame.spectral_centroid;
+    ubo_data_.spectral_flux          = frame.spectral_flux;
+    ubo_data_.beat                   = frame.beat  ? 1.f : 0.f;
+    ubo_data_.onset                  = frame.onset ? 1.f : 0.f;
+    ubo_data_.zoom_intensity         = params.zoom_intensity;
+    ubo_data_.wave_intensity         = params.wave_intensity;
+    ubo_data_.hue_shift_intensity    = params.hue_shift_intensity;
+    ubo_data_.glitch_intensity       = params.glitch_intensity;
+    ubo_data_.glow_intensity         = params.glow_intensity;
+    ubo_data_.displacement_intensity = params.displacement_intensity;
+    ubo_data_.perlin_intensity       = params.perlin_intensity;
 }
 
 // ── QRhiWidget lifecycle ──────────────────────────────────────────────────────
 
+void PreviewWidget::prepare_upload() {
+    // Y-flip: Vulkan NDC has Y-down so (0,0) is top-left — no flip needed.
+    // OpenGL NDC has Y-up so (0,0) maps to bottom-left — flip required.
+    if (!source_image_.isNull() && rhi_)
+        pending_image_ = rhi_->isYUpInNDC()
+            ? source_image_.flipped(Qt::Vertical)
+            : source_image_;
+    else
+        pending_image_ = source_image_;
+}
+
 void PreviewWidget::initialize(QRhiCommandBuffer* cb) {
     rhi_ = rhi();
     cleanup();
+
+    // Re-compute Y-flip now that we know the backend.
+    prepare_upload();
 
     const QImage& initial = pending_image_.isNull() ? make_placeholder() : pending_image_;
 

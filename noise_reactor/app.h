@@ -7,7 +7,9 @@
 #include <QMainWindow>
 #include <QString>
 
+QT_FORWARD_DECLARE_CLASS(QAudioOutput)
 QT_FORWARD_DECLARE_CLASS(QLabel)
+QT_FORWARD_DECLARE_CLASS(QMediaPlayer)
 QT_FORWARD_DECLARE_CLASS(QSlider)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
@@ -29,6 +31,7 @@ private slots:
     void open_image();
     void export_video();
     void on_analysis_done();
+    void toggle_playback();
 
 private:
     void build_menu();
@@ -36,6 +39,9 @@ private:
     void update_time_label(int ms);
 
     PreviewWidget* preview_widget_{nullptr};
+
+    QMediaPlayer* media_player_{nullptr};
+    QAudioOutput* audio_output_{nullptr};
 
     QSlider*     scrubber_{nullptr};
     QLabel*      time_label_{nullptr};

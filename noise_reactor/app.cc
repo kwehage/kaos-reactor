@@ -6,7 +6,9 @@
 #include "noise_reactor/preview_widget.h"
 
 #include <QAction>
+#include <QAudioOutput>
 #include <QApplication>
+#include <QMediaPlayer>
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -33,6 +35,15 @@ App::App(QWidget* parent) : QMainWindow(parent) {
     analysis_watcher_ = new QFutureWatcher<AudioAnalysis>(this);
     connect(analysis_watcher_, &QFutureWatcher<AudioAnalysis>::finished,
             this, &App::on_analysis_done);
+
+    media_player_ = new QMediaPlayer(this);
+    audio_output_ = new QAudioOutput(this);
+    media_player_->setAudioOutput(audio_output_);
+    connect(media_player_, &QMediaPlayer::playbackStateChanged, this,
+            [this](QMediaPlayer::PlaybackState state) {
+                play_button_->setText(
+                    state == QMediaPlayer::PlayingState ? "⏸" : "▶");
+            });
 
     build_menu();
     build_layout();
@@ -94,8 +105,8 @@ void App::build_layout() {
         const EffectSpec specs[] = {
             {"Zoom Pulse",   &EffectParams::zoom_intensity},
             {"Wave Warp",    &EffectParams::wave_intensity},
-            {"Displacement", nullptr},
-            {"Perlin Warp",  nullptr},
+            {"Displacement", &EffectParams::displacement_intensity},
+            {"Perlin Warp",  &EffectParams::perlin_intensity},
             {"Hue Shift",    &EffectParams::hue_shift_intensity},
             {"Glow",         &EffectParams::glow_intensity},
             {"Glitch",       &EffectParams::glitch_intensity},
@@ -192,6 +203,14 @@ void App::build_layout() {
         time_label_->setStyleSheet("color: #666; font-size: 11px;");
 
         connect(scrubber_, &QSlider::valueChanged, this, &App::update_time_label);
+        connect(scrubber_, &QSlider::sliderMoved, this, [this](int ms) {
+            media_player_->setPosition(static_cast<qint64>(ms));
+        });
+        connect(media_player_, &QMediaPlayer::positionChanged, this, [this](qint64 pos_ms) {
+            if (!scrubber_->isSliderDown())
+                scrubber_->setValue(static_cast<int>(pos_ms));
+        });
+        connect(play_button_, &QPushButton::clicked, this, &App::toggle_playback);
 
         transport_row->addWidget(play_button_);
         transport_row->addWidget(scrubber_, 1);
@@ -217,6 +236,7 @@ void App::load_audio(const QString& path) {
     }
 
     audio_path_ = path;
+    media_player_->setSource(QUrl::fromLocalFile(path));
     statusBar()->showMessage("Analyzing: " + path + "...");
 
     auto future = QtConcurrent::run([p = path.toStdString()]() -> AudioAnalysis {
@@ -306,6 +326,13 @@ void App::load_image(const QString& path) {
     QImage image(path);
     if (!image.isNull())
         preview_widget_->set_image(image);
+}
+
+void App::toggle_playback() {
+    if (media_player_->playbackState() == QMediaPlayer::PlayingState)
+        media_player_->pause();
+    else
+        media_player_->play();
 }
 
 void App::export_video() {

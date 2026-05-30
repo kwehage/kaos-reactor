@@ -3,7 +3,7 @@ project('noise-reactor', 'cpp',
   default_options : ['cpp_std=c++20', 'warning_level=2'])
 
 qt6         = import('qt6')
-qt6_dep     = dependency('qt6', modules : ['Core', 'Widgets', 'Gui', 'Concurrent'])
+qt6_dep     = dependency('qt6', modules : ['Core', 'Widgets', 'Gui', 'Concurrent', 'Multimedia'])
 sndfile_dep = dependency('sndfile')
 fftw3f_dep  = dependency('fftw3f')
 

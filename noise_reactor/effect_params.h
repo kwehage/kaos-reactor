@@ -10,6 +10,8 @@ struct EffectParams {
     float hue_shift_intensity{0.0f};
     float glitch_intensity{0.0f};
     float glow_intensity{0.0f};
+    float displacement_intensity{0.0f};
+    float perlin_intensity{0.0f};
 };
 
 // Mirror of the GLSL std140 UBO in image.frag — layout must match exactly.
@@ -28,8 +30,8 @@ struct EffectUBO {
     float hue_shift_intensity{0.f};
     float glitch_intensity{0.f};
     float glow_intensity{0.f};
-    float pad0{0.f};
-    float pad1{0.f};
+    float displacement_intensity{0.f};
+    float perlin_intensity{0.f};
 };
 static_assert(sizeof(EffectUBO) == 64, "EffectUBO size must match GLSL std140 layout");
 

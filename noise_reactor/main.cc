@@ -29,6 +29,7 @@ static void apply_dark_theme(QApplication& app) {
 }
 
 int main(int argc, char* argv[]) {
+    qputenv("QT_RHI_BACKEND", "vulkan");
     QApplication app(argc, argv);
     apply_dark_theme(app);
 

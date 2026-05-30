@@ -28,6 +28,7 @@ protected:
 
 private:
     void cleanup();
+    void prepare_upload();
     void rebuild_bindings();
     void rebuild_pipeline();
 
@@ -38,7 +39,8 @@ private:
     QRhiShaderResourceBindings* bindings_{nullptr};
     QRhiGraphicsPipeline*       pipeline_{nullptr};
 
-    QImage    pending_image_{};
+    QImage    source_image_{};   // original as loaded
+    QImage    pending_image_{};  // possibly Y-flipped for current backend
     bool      image_dirty_{false};
     EffectUBO ubo_data_{};
     float     time_{0.f};
