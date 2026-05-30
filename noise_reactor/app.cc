@@ -112,12 +112,32 @@ void App::build_layout() {
             {"Glitch",       &EffectParams::glitch_intensity},
         };
 
+        const char* slider_style =
+            "QSlider::groove:horizontal {"
+            "  background: #2a2a2a; height: 3px; border-radius: 1px; }"
+            "QSlider::sub-page:horizontal {"
+            "  background: #777; height: 3px; border-radius: 1px; }"
+            "QSlider::handle:horizontal {"
+            "  background: #999; width: 10px; height: 10px;"
+            "  margin: -4px 0; border-radius: 5px; }"
+            "QSlider::handle:horizontal:hover { background: #bbb; }";
+
         for (const auto& spec : specs) {
             auto* group = new QGroupBox(spec.name);
             group->setCheckable(true);
             group->setChecked(false);
             auto* group_layout = new QVBoxLayout(group);
+            group_layout->setContentsMargins(6, 2, 6, 6);
             group_layout->setSpacing(4);
+
+            // Slider rows live in a child widget so they can be hidden/shown
+            // as a unit when the group checkbox is toggled.
+            auto* rows_widget = new QWidget();
+            rows_widget->setVisible(false);
+            auto* rows_layout = new QVBoxLayout(rows_widget);
+            rows_layout->setContentsMargins(0, 0, 0, 0);
+            rows_layout->setSpacing(4);
+            group_layout->addWidget(rows_widget);
 
             auto add_row = [&](const char* label_text, int default_value) -> QSlider* {
                 auto* row_layout = new QHBoxLayout();
@@ -127,14 +147,17 @@ void App::build_layout() {
                 auto* slider = new QSlider(Qt::Horizontal);
                 slider->setRange(0, 100);
                 slider->setValue(default_value);
+                slider->setStyleSheet(slider_style);
                 row_layout->addWidget(label);
                 row_layout->addWidget(slider);
-                group_layout->addLayout(row_layout);
+                rows_layout->addLayout(row_layout);
                 return slider;
             };
 
             auto* intensity_slider = add_row("Intensity", 50);
             add_row("Smoothing", 30);
+
+            connect(group, &QGroupBox::toggled, rows_widget, &QWidget::setVisible);
 
             if (spec.field) {
                 auto field = spec.field;
