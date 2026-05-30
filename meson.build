@@ -40,10 +40,12 @@ sources = files(
   'noise_reactor/audio_file.cc',
   'noise_reactor/audio_analyzer.cc',
   'noise_reactor/preview_widget.cc',
+  'noise_reactor/waveform_widget.cc',
 )
 
 moc_files = qt6.preprocess(
-  moc_headers     : ['noise_reactor/app.h', 'noise_reactor/preview_widget.h'],
+  moc_headers     : ['noise_reactor/app.h', 'noise_reactor/preview_widget.h',
+                     'noise_reactor/waveform_widget.h'],
   include_directories : inc,
   dependencies    : qt6_dep,
 )

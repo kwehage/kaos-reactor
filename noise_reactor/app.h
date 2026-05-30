@@ -16,6 +16,7 @@ QT_FORWARD_DECLARE_CLASS(QPushButton)
 namespace noise_reactor {
 
 class PreviewWidget;
+class WaveformWidget;
 
 class App : public QMainWindow {
     Q_OBJECT
@@ -38,7 +39,8 @@ private:
     void build_layout();
     void update_time_label(int ms);
 
-    PreviewWidget* preview_widget_{nullptr};
+    PreviewWidget*  preview_widget_{nullptr};
+    WaveformWidget* waveform_widget_{nullptr};
 
     QMediaPlayer* media_player_{nullptr};
     QAudioOutput* audio_output_{nullptr};

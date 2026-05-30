@@ -4,6 +4,7 @@
 #include "noise_reactor/audio_file.h"
 #include "noise_reactor/audio_frame_data.h"
 #include "noise_reactor/preview_widget.h"
+#include "noise_reactor/waveform_widget.h"
 
 #include <QAction>
 #include <QAudioOutput>
@@ -206,10 +207,14 @@ void App::build_layout() {
         timeline_layout->setContentsMargins(8, 4, 8, 4);
         timeline_layout->setSpacing(4);
 
-        auto* waveform_widget = new QWidget();
-        waveform_widget->setFixedHeight(26);
-        waveform_widget->setStyleSheet("background-color: #0e0e0e; border-radius: 2px;");
-        timeline_layout->addWidget(waveform_widget);
+        waveform_widget_ = new WaveformWidget();
+        waveform_widget_->setFixedHeight(26);
+        timeline_layout->addWidget(waveform_widget_);
+
+        connect(waveform_widget_, &WaveformWidget::seek_requested, this, [this](int ms) {
+            scrubber_->setValue(ms);
+            media_player_->setPosition(static_cast<qint64>(ms));
+        });
 
         auto* transport_row = new QHBoxLayout();
         transport_row->setSpacing(6);
@@ -286,6 +291,7 @@ void App::on_analysis_done() {
     const int duration_ms = static_cast<int>(analysis_.duration * 1000.f);
     scrubber_->setRange(0, duration_ms);
     scrubber_->setValue(0);
+    waveform_widget_->set_analysis(analysis_);
 
     int beats = 0, onsets = 0;
     for (const auto& frame : analysis_.frames) {
@@ -313,6 +319,7 @@ void App::update_time_label(int ms) {
     if (!analysis_.empty()) {
         preview_widget_->set_frame_data(
             analysis_.frames[analysis_.frame_for_time(ms / 1000.f)], effect_params_);
+        waveform_widget_->set_position(float(ms) / (analysis_.duration * 1000.f));
     } else {
         preview_widget_->set_frame_data(FrameData{}, effect_params_);
     }
