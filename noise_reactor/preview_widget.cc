@@ -1,10 +1,19 @@
 #include "noise_reactor/preview_widget.h"
 
-#include <QCoreApplication>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFile>
+#include <QFileInfo>
+#include <QMimeData>
+#include <QMouseEvent>
+#include <QSet>
 #include <QSizePolicy>
+#include <QWheelEvent>
 #include <rhi/qrhi.h>
 #include <rhi/qshader.h>
+
+#include <algorithm>
+#include <cmath>
 
 namespace noise_reactor {
 
@@ -15,24 +24,39 @@ static QImage make_placeholder() {
 }
 
 static QShader load_shader(const char* filename) {
-    const QString path = QCoreApplication::applicationDirPath() + "/" + filename;
-    QFile file(path);
+    QFile file(QString(":/shaders/") + filename);
     if (!file.open(QIODevice::ReadOnly))
-        qFatal("Cannot open shader: %s", qPrintable(path));
+        qFatal("Cannot open shader resource: %s", filename);
     const QShader shader = QShader::fromSerialized(file.readAll());
     if (!shader.isValid())
-        qFatal("Invalid shader: %s", qPrintable(path));
+        qFatal("Invalid shader resource: %s", filename);
     return shader;
+}
+
+static bool is_image_file(const QString& path) {
+    static const QSet<QString> exts{
+        "png", "jpg", "jpeg", "bmp", "tiff", "tif"};
+    return exts.contains(QFileInfo(path).suffix().toLower());
+}
+
+static bool is_audio_file(const QString& path) {
+    static const QSet<QString> exts{
+        "wav", "flac", "mp3", "ogg", "aiff", "aif"};
+    return exts.contains(QFileInfo(path).suffix().toLower());
 }
 
 PreviewWidget::PreviewWidget(QWidget* parent) : QRhiWidget(parent) {
     setMinimumSize(640, 360);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    setAcceptDrops(true);
+    ubo_data_.zoom_scale = 1.f;
 }
 
 void PreviewWidget::set_image(const QImage& image) {
     source_image_ = image.convertToFormat(QImage::Format_RGBA8888);
-    // Defer backend-aware Y-flip to prepare_upload(); rhi_ may not exist yet.
+    image_ar_ = source_image_.height() > 0
+        ? float(source_image_.width()) / float(source_image_.height()) : 1.f;
+    ubo_data_.image_ar = image_ar_;
     prepare_upload();
     image_dirty_ = true;
     update();
@@ -54,6 +78,14 @@ void PreviewWidget::set_frame_data(const FrameData& frame, const EffectParams& p
     ubo_data_.glow_intensity         = params.glow_intensity;
     ubo_data_.displacement_intensity = params.displacement_intensity;
     ubo_data_.perlin_intensity       = params.perlin_intensity;
+    ubo_data_.warp_scale             = params.warp_scale;
+    ubo_data_.brightness_intensity   = params.brightness_intensity;
+    ubo_data_.saturation_intensity   = params.saturation_intensity;
+    ubo_data_.vignette_intensity     = params.vignette_intensity;
+    ubo_data_.chromatic_intensity    = params.chromatic_intensity;
+    ubo_data_.film_grain_intensity   = params.film_grain_intensity;
+    ubo_data_.pixelate_intensity     = params.pixelate_intensity;
+    ubo_data_.edge_glow_intensity    = params.edge_glow_intensity;
 }
 
 // ── QRhiWidget lifecycle ──────────────────────────────────────────────────────
@@ -71,6 +103,7 @@ void PreviewWidget::prepare_upload() {
 
 void PreviewWidget::initialize(QRhiCommandBuffer* cb) {
     rhi_ = rhi();
+    y_up_in_ndc_ = rhi_->isYUpInNDC();
     cleanup();
 
     // Re-compute Y-flip now that we know the backend.
@@ -102,7 +135,28 @@ void PreviewWidget::initialize(QRhiCommandBuffer* cb) {
     image_dirty_ = false;
 }
 
+void PreviewWidget::set_cinematic(float zoom, float pan_x, float pan_y) {
+    ubo_data_.cinematic_zoom  = zoom;
+    ubo_data_.cinematic_pan_x = pan_x;
+    ubo_data_.cinematic_pan_y = pan_y;
+}
+
+void PreviewWidget::begin_grab() { grab_in_progress_ = true; }
+void PreviewWidget::end_grab()   { grab_in_progress_ = false; }
+
 void PreviewWidget::render(QRhiCommandBuffer* cb) {
+    // Block viewport renders that race with export grabs. setUpdatesEnabled(false)
+    // suppresses Qt paint events but the compositor can still invoke render() when
+    // a sibling widget (e.g. the progress dialog) repaints the parent window. If
+    // both a compositor render and grabFramebuffer() record into the same command
+    // buffer concurrently the GPU driver crashes. Only allow a full render when we
+    // are explicitly inside a begin_grab()/end_grab() bracket.
+    if (exporting_ && !grab_in_progress_) {
+        cb->beginPass(renderTarget(), QColor(0, 0, 0), {1.0f, 0}, nullptr);
+        cb->endPass();
+        return;
+    }
+
     time_ += 1.f / 60.f;
     ubo_data_.time = time_;
 
@@ -122,10 +176,29 @@ void PreviewWidget::render(QRhiCommandBuffer* cb) {
     batch->updateDynamicBuffer(uniform_buffer_, 0, sizeof(EffectUBO), &ubo_data_);
 
     const QSize rt_size = renderTarget()->pixelSize();
-    cb->beginPass(renderTarget(), QColor(18, 18, 18), {1.0f, 0}, batch);
+    cb->beginPass(renderTarget(), QColor(0, 0, 0), {1.0f, 0}, batch);
+
+    QRhiViewport viewport{0, 0, float(rt_size.width()), float(rt_size.height())};
+    if (!exporting_ && export_resolution_.isValid()) {
+        const float target_ar = float(export_resolution_.width()) / float(export_resolution_.height());
+        const float widget_ar = float(rt_size.width()) / float(rt_size.height());
+        float vp_w, vp_h, vp_x, vp_y;
+        if (widget_ar > target_ar) {
+            vp_h = float(rt_size.height());
+            vp_w = vp_h * target_ar;
+            vp_x = (float(rt_size.width()) - vp_w) * 0.5f;
+            vp_y = 0.f;
+        } else {
+            vp_w = float(rt_size.width());
+            vp_h = vp_w / target_ar;
+            vp_x = 0.f;
+            vp_y = (float(rt_size.height()) - vp_h) * 0.5f;
+        }
+        viewport = {vp_x, vp_y, vp_w, vp_h};
+    }
 
     cb->setGraphicsPipeline(pipeline_);
-    cb->setViewport({0, 0, float(rt_size.width()), float(rt_size.height())});
+    cb->setViewport(viewport);
     cb->setShaderResources(bindings_);
     cb->draw(6);
 
@@ -137,8 +210,82 @@ void PreviewWidget::render(QRhiCommandBuffer* cb) {
 
 void PreviewWidget::set_exporting(bool exporting) {
     exporting_ = exporting;
+    setUpdatesEnabled(!exporting);
     if (!exporting)
-        update();  // restart live loop when export ends
+        update();
+}
+
+void PreviewWidget::set_export_resolution(QSize res) {
+    export_resolution_ = res;
+    viewport_ar_ = (res.isValid() && res.height() > 0)
+        ? float(res.width()) / float(res.height()) : image_ar_;
+    ubo_data_.viewport_ar = viewport_ar_;
+    update();
+}
+
+void PreviewWidget::dragEnterEvent(QDragEnterEvent* event) {
+    if (exporting_) return;
+    if (!event->mimeData()->hasUrls())
+        return;
+    for (const QUrl& url : event->mimeData()->urls()) {
+        const QString path = url.toLocalFile();
+        if (is_image_file(path) || is_audio_file(path)) {
+            event->acceptProposedAction();
+            return;
+        }
+    }
+}
+
+void PreviewWidget::dropEvent(QDropEvent* event) {
+    if (exporting_) return;
+    for (const QUrl& url : event->mimeData()->urls()) {
+        const QString path = url.toLocalFile();
+        if (is_image_file(path)) {
+            emit image_dropped(path);
+            event->acceptProposedAction();
+            return;
+        }
+        if (is_audio_file(path)) {
+            emit audio_dropped(path);
+            event->acceptProposedAction();
+            return;
+        }
+    }
+}
+
+void PreviewWidget::mousePressEvent(QMouseEvent* event) {
+    if (exporting_) return;
+    if (event->button() == Qt::LeftButton)
+        drag_last_pos_ = event->pos();
+}
+
+void PreviewWidget::mouseMoveEvent(QMouseEvent* event) {
+    if (exporting_) return;
+    if (!(event->buttons() & Qt::LeftButton))
+        return;
+    const QPoint delta = event->pos() - drag_last_pos_;
+    drag_last_pos_ = event->pos();
+
+    const float y_sign = y_up_in_ndc_ ? -1.f : 1.f;
+    pan_x_ += float(delta.x())          / (float(width())  * zoom_scale_);
+    pan_y_ += y_sign * float(delta.y()) / (float(height()) * zoom_scale_);
+    ubo_data_.pan_x = pan_x_;
+    ubo_data_.pan_y = pan_y_;
+    update();
+}
+
+void PreviewWidget::mouseReleaseEvent(QMouseEvent* event) {
+    if (exporting_) return;
+    if (event->button() == Qt::LeftButton)
+        drag_last_pos_ = {};
+}
+
+void PreviewWidget::wheelEvent(QWheelEvent* event) {
+    if (exporting_) return;
+    const float steps = float(event->angleDelta().y()) / 120.f;
+    zoom_scale_ = std::clamp(zoom_scale_ * std::pow(1.15f, steps), 0.1f, 20.f);
+    ubo_data_.zoom_scale = zoom_scale_;
+    update();
 }
 
 void PreviewWidget::releaseResources() {

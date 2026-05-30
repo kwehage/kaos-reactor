@@ -18,19 +18,33 @@ rhi_inc = include_directories(_qt_inc / 'QtGui' / _qt_ver / 'QtGui')
 
 # ── GLSL → QSB (Qt shader bundle) ────────────────────────────────────────────
 qsb = find_program('/usr/lib/qt6/bin/qsb', required : true)
+rcc = find_program(['/usr/lib/qt6/rcc', 'rcc'], required : true)
 
 vert_qsb = custom_target('image_vert_qsb',
   input   : 'shaders/image.vert',
   output  : 'image.vert.qsb',
   command : [qsb, '--glsl', '300 es,330', '-o', '@OUTPUT@', '@INPUT@'],
-  build_by_default : true,
 )
 
 frag_qsb = custom_target('image_frag_qsb',
   input   : 'shaders/image.frag',
   output  : 'image.frag.qsb',
   command : [qsb, '--glsl', '300 es,330', '-o', '@OUTPUT@', '@INPUT@'],
-  build_by_default : true,
+)
+
+# Copy the QRC into the build directory so rcc resolves the .qsb references
+# relative to the same directory where the generated shader bundles land.
+shader_qrc = configure_file(
+  input  : 'shaders/shaders.qrc',
+  output : 'shaders.qrc',
+  copy   : true,
+)
+
+shader_res = custom_target('shader_resources',
+  input   : shader_qrc,
+  output  : 'qrc_shaders.cpp',
+  command : [rcc, '@INPUT@', '--name', 'shaders', '-o', '@OUTPUT@'],
+  depends : [vert_qsb, frag_qsb],
 )
 
 # ── C++ sources ───────────────────────────────────────────────────────────────
@@ -41,13 +55,13 @@ sources = files(
   'noise_reactor/audio_analyzer.cc',
   'noise_reactor/preview_widget.cc',
   'noise_reactor/waveform_widget.cc',
-  'noise_reactor/export_dialog.cc',
+  'noise_reactor/cinematic_target_widget.cc',
 )
 
 moc_files = qt6.preprocess(
   moc_headers     : ['noise_reactor/app.h', 'noise_reactor/preview_widget.h',
                      'noise_reactor/waveform_widget.h',
-                     'noise_reactor/export_dialog.h'],
+                     'noise_reactor/cinematic_target_widget.h'],
   include_directories : inc,
   dependencies    : qt6_dep,
 )
@@ -55,8 +69,7 @@ moc_files = qt6.preprocess(
 executable('noise_reactor',
   sources,
   moc_files,
-  vert_qsb,
-  frag_qsb,
+  shader_res,
   dependencies    : [qt6_dep, sndfile_dep, fftw3f_dep],
   include_directories : [inc, rhi_inc],
 )

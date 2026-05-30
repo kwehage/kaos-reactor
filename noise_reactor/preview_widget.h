@@ -4,6 +4,7 @@
 #include "noise_reactor/effect_params.h"
 
 #include <QImage>
+#include <QPoint>
 #include <QRhiWidget>
 
 class QRhiBuffer;
@@ -21,12 +22,27 @@ public:
     void set_image(const QImage& image);
     void set_frame_data(const FrameData& frame, const EffectParams& params);
     void set_exporting(bool exporting);
+    void set_export_resolution(QSize res);
+    void set_cinematic(float zoom, float pan_x, float pan_y);
+    void begin_grab();
+    void end_grab();
     bool has_image() const { return !source_image_.isNull(); }
+
+signals:
+    void image_dropped(const QString& path);
+    void audio_dropped(const QString& path);
 
 protected:
     void initialize(QRhiCommandBuffer* cb) override;
     void render(QRhiCommandBuffer* cb) override;
     void releaseResources() override;
+
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
 
 private:
     void cleanup();
@@ -41,10 +57,19 @@ private:
     QRhiShaderResourceBindings* bindings_{nullptr};
     QRhiGraphicsPipeline*       pipeline_{nullptr};
 
-    QImage    source_image_{};   // original as loaded
+    QImage    source_image_{};
     QImage    pending_image_{};  // possibly Y-flipped for current backend
+    QSize     export_resolution_{};
+    float     image_ar_{1.f};
+    float     viewport_ar_{1.f};
+    float     pan_x_{0.f};
+    float     pan_y_{0.f};
+    float     zoom_scale_{1.f};
+    QPoint    drag_last_pos_{};
+    bool      y_up_in_ndc_{false};
     bool      image_dirty_{false};
     bool      exporting_{false};
+    bool      grab_in_progress_{false};
     EffectUBO ubo_data_{};
     float     time_{0.f};
 };
