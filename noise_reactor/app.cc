@@ -9,9 +9,9 @@
 #include <QAudioOutput>
 #include <QApplication>
 #include <QMediaPlayer>
+#include <QCheckBox>
 #include <QFileDialog>
 #include <QGridLayout>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QImage>
 #include <QLabel>
@@ -123,20 +123,19 @@ void App::build_layout() {
             "QSlider::handle:horizontal:hover { background: #bbb; }";
 
         for (const auto& spec : specs) {
-            auto* group = new QGroupBox(spec.name);
-            group->setCheckable(true);
-            group->setChecked(false);
-            group->setFlat(true);  // starts collapsed: no frame, just the title line
-            auto* group_layout = new QVBoxLayout(group);
-            group_layout->setContentsMargins(0, 0, 0, 0);  // no padding when collapsed
-            group_layout->setSpacing(4);
+            // A plain QCheckBox header + collapsible QWidget avoids the empty
+            // frame that QGroupBox draws regardless of flat/margin settings.
+            auto* checkbox = new QCheckBox(spec.name);
+            checkbox->setChecked(false);
+            checkbox->setStyleSheet(
+                "QCheckBox { color: #ccc; font-size: 11px; padding: 2px 0; }"
+                "QCheckBox::indicator { width: 13px; height: 13px; }");
 
             auto* rows_widget = new QWidget();
             rows_widget->setVisible(false);
             auto* rows_layout = new QVBoxLayout(rows_widget);
-            rows_layout->setContentsMargins(0, 0, 0, 0);
+            rows_layout->setContentsMargins(8, 2, 4, 4);
             rows_layout->setSpacing(4);
-            group_layout->addWidget(rows_widget);
 
             auto add_row = [&](const char* label_text, int default_value) -> QSlider* {
                 auto* row_layout = new QHBoxLayout();
@@ -156,31 +155,27 @@ void App::build_layout() {
             auto* intensity_slider = add_row("Intensity", 50);
             add_row("Smoothing", 30);
 
+            connect(checkbox, &QCheckBox::toggled, rows_widget, &QWidget::setVisible);
+
             auto field = spec.field;
-            connect(group, &QGroupBox::toggled, this,
-                    [this, group, group_layout, rows_widget, intensity_slider, field](bool checked) {
-                        rows_widget->setVisible(checked);
-                        group->setFlat(!checked);
-                        group_layout->setContentsMargins(
-                            checked ? 6 : 0, 0, checked ? 6 : 0, checked ? 6 : 0);
-                        if (field) {
+            if (field) {
+                connect(checkbox, &QCheckBox::toggled, this,
+                        [this, intensity_slider, field](bool checked) {
                             effect_params_.*field = checked
                                 ? intensity_slider->value() / 100.f : 0.f;
                             update_time_label(scrubber_->value());
-                        }
-                    });
-
-            if (field) {
+                        });
                 connect(intensity_slider, &QSlider::valueChanged, this,
-                        [this, group, intensity_slider, field](int) {
-                            if (group->isChecked()) {
+                        [this, checkbox, intensity_slider, field](int) {
+                            if (checkbox->isChecked()) {
                                 effect_params_.*field = intensity_slider->value() / 100.f;
                                 update_time_label(scrubber_->value());
                             }
                         });
             }
 
-            parameter_layout->addWidget(group);
+            parameter_layout->addWidget(checkbox);
+            parameter_layout->addWidget(rows_widget);
         }
 
         parameter_layout->addStretch();
