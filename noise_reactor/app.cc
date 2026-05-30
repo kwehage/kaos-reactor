@@ -260,8 +260,19 @@ void App::build_layout() {
             cin_layout->addLayout(zoom_row);
 
             connect(cin_checkbox, &QCheckBox::toggled, cin_rows, &QWidget::setVisible);
+            auto* reverse_checkbox = new QCheckBox("Reverse");
+            reverse_checkbox->setChecked(false);
+            reverse_checkbox->setStyleSheet(
+                "QCheckBox { color: #aaa; font-size: 11px; padding: 2px 0; }"
+                "QCheckBox::indicator { width: 13px; height: 13px; }");
+            cin_layout->addWidget(reverse_checkbox);
+
             connect(cin_checkbox, &QCheckBox::toggled, this, [this](bool checked) {
                 cinematic_enabled_ = checked;
+                update_time_label(static_cast<int>(media_player_->position()));
+            });
+            connect(reverse_checkbox, &QCheckBox::toggled, this, [this](bool checked) {
+                cinematic_reversed_ = checked;
                 update_time_label(static_cast<int>(media_player_->position()));
             });
             connect(zoom_slider, &QSlider::valueChanged, this, [this](int v) {
@@ -581,8 +592,9 @@ void App::update_time_label(int ms) {
     // Cinematic zoom — purely time-based, independent of audio features.
     // Interpolates from identity (t=0) to the user-selected target (t=1).
     if (cinematic_enabled_ && analysis_.duration > 0.f) {
-        const float t = std::clamp(float(ms) / (analysis_.duration * 1000.f), 0.f, 1.f);
-        const float zoom = 1.f + cinematic_zoom_amount_ * t;
+        const float t    = std::clamp(float(ms) / (analysis_.duration * 1000.f), 0.f, 1.f);
+        const float prog = cinematic_reversed_ ? 1.f - t : t;
+        const float zoom = 1.f + cinematic_zoom_amount_ * prog;
         const float px   = (0.5f - cinematic_target_x_) * (zoom - 1.f) / zoom;
         const float py   = (0.5f - cinematic_target_y_) * (zoom - 1.f) / zoom;
         preview_widget_->set_cinematic(zoom, px, py);

@@ -69,6 +69,7 @@ private:
 
     CinematicTargetWidget* cinematic_target_widget_{nullptr};
     bool  cinematic_enabled_{false};
+    bool  cinematic_reversed_{false};
     float cinematic_target_x_{0.5f};
     float cinematic_target_y_{0.5f};
     float cinematic_zoom_amount_{0.5f};
