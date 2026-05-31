@@ -129,7 +129,7 @@ jobs:
             | awk '{ print $3 }' \
             | xargs -I{} cp {} $DIST/
 
-          7z a ${DIST}.zip $DIST/
+          zip -r ${DIST}.zip $DIST/
 
       - uses: softprops/action-gh-release@v2
         with:
