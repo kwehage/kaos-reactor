@@ -19,23 +19,27 @@ rhi_inc = include_directories(_qt_inc / 'QtGui' / _qt_ver / 'QtGui')
 
 # ── GLSL → QSB (Qt shader bundle) ────────────────────────────────────────────
 # Qt's host-tool dir (rcc, qsb, etc.) is not always in PATH.
-# Try host_bins first (set on MSYS2/Qt upstream builds), fall back to bindir
-# (used on Debian/Ubuntu packages).  Both resolve to the same private Qt bin dir.
-_qt_hostbins = run_command('pkg-config', '--variable=host_bins', 'Qt6Core',
-                           check : false).stdout().strip()
-if _qt_hostbins == ''
-  _qt_hostbins = run_command('pkg-config', '--variable=bindir', 'Qt6Core',
-                             check : false).stdout().strip()
-endif
-# Some distros (Ubuntu's Qt 6.4) place rcc one level above bindir (/usr/lib/qt6/rcc)
-# while bindir itself only contains newer tools like qsb (/usr/lib/qt6/bin/qsb).
-_qt_parent = fs.parent(_qt_hostbins)
-qsb = find_program([_qt_hostbins / 'qsb', _qt_hostbins / 'qsb6', 'qsb6', 'qsb'],
-                   required : true)
-rcc = find_program([_qt_hostbins / 'rcc', _qt_hostbins / 'rcc6',
-                    _qt_parent / 'rcc', _qt_parent / 'rcc6',
-                    'rcc6', 'rcc'],
-                   required : true)
+# Build a list of candidate directories from all known pkg-config variables.
+_qt_tool_dirs = []
+foreach _var : ['host_bins', 'bindir', 'libexecdir', 'host_libexecs']
+  _d = run_command('pkg-config', '--variable=' + _var, 'Qt6Core',
+                   check : false).stdout().strip()
+  if _d != ''
+    _qt_tool_dirs += [_d]
+  endif
+endforeach
+
+_qsb_candidates = []
+_rcc_candidates = []
+foreach _dir : _qt_tool_dirs
+  _qsb_candidates += [_dir / 'qsb', _dir / 'qsb6']
+  _rcc_candidates += [_dir / 'rcc', _dir / 'rcc6']
+endforeach
+_qsb_candidates += ['qsb6', 'qsb']
+_rcc_candidates += ['rcc6', 'rcc']
+
+qsb = find_program(_qsb_candidates, required : true)
+rcc = find_program(_rcc_candidates, required : true)
 
 vert_qsb = custom_target('image_vert_qsb',
   input   : 'shaders/image.vert',

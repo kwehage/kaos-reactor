@@ -30,6 +30,14 @@ jobs:
           [ -z "$QT_BINS" ] && QT_BINS=$(pkg-config --variable=bindir Qt6Core)
           echo "$QT_BINS" >> $GITHUB_PATH
 
+      - name: Debug Qt tool locations
+        run: |
+          for var in bindir libexecdir host_bins host_libexecs exec_prefix; do
+            echo "$var=$(pkg-config --variable=$var Qt6Core 2>/dev/null)"
+          done
+          find /usr -name "rcc*" -executable -type f 2>/dev/null
+          dpkg -l | grep qt6 | awk '{print $2, $3}'
+
       - name: Build
         run: |
           meson setup build --prefix /usr
