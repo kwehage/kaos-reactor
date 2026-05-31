@@ -83,6 +83,7 @@ jobs:
           msystem: MINGW64
           update: true
           pacboy: >-
+            gcc:p
             qt6-base:p
             qt6-multimedia:p
             qt6-tools:p

@@ -3,6 +3,7 @@ project('noise-reactor', 'cpp',
   default_options : ['cpp_std=c++20', 'warning_level=2'])
 
 qt6         = import('qt6')
+fs          = import('fs')
 qt6_dep     = dependency('qt6', modules : ['Core', 'Widgets', 'Gui', 'Concurrent', 'Multimedia'])
 sndfile_dep = dependency('sndfile')
 fftw3f_dep  = dependency('fftw3f')
@@ -26,9 +27,14 @@ if _qt_hostbins == ''
   _qt_hostbins = run_command('pkg-config', '--variable=bindir', 'Qt6Core',
                              check : false).stdout().strip()
 endif
+# Some distros (Ubuntu's Qt 6.4) place rcc one level above bindir (/usr/lib/qt6/rcc)
+# while bindir itself only contains newer tools like qsb (/usr/lib/qt6/bin/qsb).
+_qt_parent = fs.parent(_qt_hostbins)
 qsb = find_program([_qt_hostbins / 'qsb', _qt_hostbins / 'qsb6', 'qsb6', 'qsb'],
                    required : true)
-rcc = find_program([_qt_hostbins / 'rcc', _qt_hostbins / 'rcc6', 'rcc6', 'rcc'],
+rcc = find_program([_qt_hostbins / 'rcc', _qt_hostbins / 'rcc6',
+                    _qt_parent / 'rcc', _qt_parent / 'rcc6',
+                    'rcc6', 'rcc'],
                    required : true)
 
 vert_qsb = custom_target('image_vert_qsb',
