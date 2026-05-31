@@ -110,10 +110,15 @@ For NVIDIA GPUs, also install `nvidia-utils`. If the driver was updated recently
 
 ### Ubuntu / Debian (24.04+)
 
+Ubuntu 24.04 ships Qt 6.4.2, which is too old (Qt 6.6+ required for `QRhiWidget`). Install Qt 6.8 via [aqtinstall](https://github.com/miurahr/aqtinstall), then install the system dependencies:
+
 ```bash
-sudo apt install meson ninja-build qt6-base-dev qt6-base-private-dev \
-                 libvulkan-dev vulkan-tools libsndfile1-dev libfftw3-dev \
-                 ffmpeg
+pip install aqtinstall
+aqt install-qt linux desktop 6.8.0 -m qtmultimedia qtshadertools
+export PATH="$HOME/Qt/6.8.0/gcc_64/bin:$PATH"
+export CMAKE_PREFIX_PATH="$HOME/Qt/6.8.0/gcc_64"
+
+sudo apt install meson ninja-build libvulkan-dev libsndfile1-dev libfftw3-dev ffmpeg
 ```
 
 ### Fedora

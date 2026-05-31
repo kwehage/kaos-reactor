@@ -6,7 +6,11 @@ namespace noise_reactor {
 
 std::optional<AudioFile> AudioFile::load(const std::filesystem::path& path) {
     SF_INFO info{};
+#ifdef _WIN32
+    SNDFILE* sf = sf_wchar_open(path.c_str(), SFM_READ, &info);
+#else
     SNDFILE* sf = sf_open(path.c_str(), SFM_READ, &info);
+#endif
     if (!sf)
         return std::nullopt;
 

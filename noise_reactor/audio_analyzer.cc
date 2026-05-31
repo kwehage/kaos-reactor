@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <deque>
+#include <numbers>
 #include <fftw3.h>
 #include <numeric>
 
@@ -12,7 +13,7 @@ namespace {
 
 std::vector<float> make_hann_window(int n) {
     std::vector<float> w(n);
-    const float twopi_over_nm1 = 2.f * static_cast<float>(M_PI) / (n - 1);
+    const float twopi_over_nm1 = 2.f * std::numbers::pi_v<float> / (n - 1);
     for (int i = 0; i < n; ++i)
         w[i] = 0.5f * (1.f - std::cos(twopi_over_nm1 * i));
     return w;

@@ -14,29 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.8.*'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: 'qtmultimedia qtshadertools'
+
+      - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y \
             meson ninja-build \
-            qt6-base-dev qt6-base-private-dev \
-            qt6-tools-dev qt6-tools-dev-tools \
-            qt6-multimedia-dev \
-            qt6-shader-baker \
             libvulkan-dev \
             libsndfile1-dev \
             libfftw3-dev
-          QT_BINS=$(pkg-config --variable=host_bins Qt6Core 2>/dev/null)
-          [ -z "$QT_BINS" ] && QT_BINS=$(pkg-config --variable=bindir Qt6Core)
-          echo "$QT_BINS" >> $GITHUB_PATH
-
-      - name: Debug Qt tool locations
-        run: |
-          for var in bindir libexecdir host_bins host_libexecs exec_prefix; do
-            echo "$var=$(pkg-config --variable=$var Qt6Core 2>/dev/null)"
-          done
-          find /usr -name "rcc*" -executable -type f 2>/dev/null
-          dpkg -l | grep qt6 | awk '{print $2, $3}'
+          echo "CMAKE_PREFIX_PATH=$QT_ROOT_DIR" >> $GITHUB_ENV
 
       - name: Build
         run: |
@@ -64,7 +59,7 @@ jobs:
           wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
           chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
 
-          export QMAKE=/usr/lib/qt6/bin/qmake6
+          export QMAKE=$(which qmake)
 
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
@@ -106,9 +101,10 @@ jobs:
 
       - name: Add Qt host tools to PATH
         run: |
-          QT_BINS=$(pkg-config --variable=host_bins Qt6Core 2>/dev/null)
-          [ -z "$QT_BINS" ] && QT_BINS=$(pkg-config --variable=bindir Qt6Core)
-          cygpath -w "$QT_BINS" >> $GITHUB_PATH
+          for var in host_bins bindir libexecdir host_libexecs; do
+            d=$(pkg-config --variable=$var Qt6Core 2>/dev/null)
+            [ -n "$d" ] && cygpath -w "$d" >> $GITHUB_PATH
+          done
 
       - name: Build
         run: |

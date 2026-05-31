@@ -4,16 +4,23 @@ project('noise-reactor', 'cpp',
 
 qt6         = import('qt6')
 fs          = import('fs')
-qt6_dep     = dependency('qt6', modules : ['Core', 'Widgets', 'Gui', 'Concurrent', 'Multimedia'])
+qt6_dep     = dependency('qt6', modules : ['Core', 'Widgets', 'Gui', 'Concurrent', 'Multimedia'],
+                         version : '>=6.6')
 sndfile_dep = dependency('sndfile')
 fftw3f_dep  = dependency('fftw3f')
 
 inc = include_directories('.')
 
 # RHI headers live in a versioned subdirectory not exported by the default Qt6Gui
-# include path.  Derive it from pkg-config so it stays correct across Qt upgrades.
-_qt_inc = run_command('pkg-config', '--variable=includedir', 'Qt6Core',
-                      check : true).stdout().strip()
+# include path.  Derive it from pkg-config (distro Qt) or qmake (aqtinstall).
+_qt_inc = run_command('pkg-config', '--variable=includedir', 'Qt6Core', check : false).stdout().strip()
+if _qt_inc == ''
+  _r = run_command('qmake6', '-query', 'QT_INSTALL_HEADERS', check : false)
+  if _r.returncode() != 0
+    _r = run_command('qmake', '-query', 'QT_INSTALL_HEADERS', check : true)
+  endif
+  _qt_inc = _r.stdout().strip()
+endif
 _qt_ver = qt6_dep.version()
 rhi_inc = include_directories(_qt_inc / 'QtGui' / _qt_ver / 'QtGui')
 
