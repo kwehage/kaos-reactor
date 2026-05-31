@@ -26,7 +26,9 @@ jobs:
             libvulkan-dev \
             libsndfile1-dev \
             libfftw3-dev
-          echo "/usr/lib/qt6/bin" >> $GITHUB_PATH
+          QT_BINS=$(pkg-config --variable=host_bins Qt6Core 2>/dev/null)
+          [ -z "$QT_BINS" ] && QT_BINS=$(pkg-config --variable=bindir Qt6Core)
+          echo "$QT_BINS" >> $GITHUB_PATH
 
       - name: Build
         run: |
@@ -93,9 +95,15 @@ jobs:
             vulkan-headers:p
             vulkan-loader:p
 
+      - name: Add Qt host tools to PATH
+        run: |
+          QT_BINS=$(pkg-config --variable=host_bins Qt6Core 2>/dev/null)
+          [ -z "$QT_BINS" ] && QT_BINS=$(pkg-config --variable=bindir Qt6Core)
+          cygpath -w "$QT_BINS" >> $GITHUB_PATH
+
       - name: Build
         run: |
-          meson setup build
+          CC=gcc CXX=g++ meson setup build
           meson compile -C build
 
       - name: Package

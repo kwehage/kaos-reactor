@@ -1,5 +1,5 @@
 project('noise-reactor', 'cpp',
-  version : '0.1.0',
+  version : '0.0.1',
   default_options : ['cpp_std=c++20', 'warning_level=2'])
 
 qt6         = import('qt6')
@@ -17,28 +17,36 @@ _qt_ver = qt6_dep.version()
 rhi_inc = include_directories(_qt_inc / 'QtGui' / _qt_ver / 'QtGui')
 
 # ── GLSL → QSB (Qt shader bundle) ────────────────────────────────────────────
-# qsb lives in Qt's private bin dir on Linux; on other platforms it's in PATH.
-qsb = find_program(['/usr/lib/qt6/bin/qsb', 'qsb6', 'qsb'], required : true)
-rcc = find_program(['/usr/lib/qt6/rcc', '/usr/lib/qt6/bin/rcc', 'rcc6', 'rcc'], required : true)
+# Qt's host-tool dir (rcc, qsb, etc.) is not always in PATH.
+# Try host_bins first (set on MSYS2/Qt upstream builds), fall back to bindir
+# (used on Debian/Ubuntu packages).  Both resolve to the same private Qt bin dir.
+_qt_hostbins = run_command('pkg-config', '--variable=host_bins', 'Qt6Core',
+                           check : false).stdout().strip()
+if _qt_hostbins == ''
+  _qt_hostbins = run_command('pkg-config', '--variable=bindir', 'Qt6Core',
+                             check : false).stdout().strip()
+endif
+qsb = find_program([_qt_hostbins / 'qsb', _qt_hostbins / 'qsb6', 'qsb6', 'qsb'],
+                   required : true)
+rcc = find_program([_qt_hostbins / 'rcc', _qt_hostbins / 'rcc6', 'rcc6', 'rcc'],
+                   required : true)
 
-# --spirv embeds SPIR-V alongside GLSL so Qt's D3D11/Metal backends can
-# cross-compile to HLSL/MSL at runtime via the built-in SPIRV-Cross.
 vert_qsb = custom_target('image_vert_qsb',
   input   : 'shaders/image.vert',
   output  : 'image.vert.qsb',
-  command : [qsb, '--glsl', '300 es,330', '--spirv', '-o', '@OUTPUT@', '@INPUT@'],
+  command : [qsb, '--glsl', '300 es,330', '-o', '@OUTPUT@', '@INPUT@'],
 )
 
 frag_qsb = custom_target('image_frag_qsb',
   input   : 'shaders/image.frag',
   output  : 'image.frag.qsb',
-  command : [qsb, '--glsl', '300 es,330', '--spirv', '-o', '@OUTPUT@', '@INPUT@'],
+  command : [qsb, '--glsl', '300 es,330', '-o', '@OUTPUT@', '@INPUT@'],
 )
 
 composite_qsb = custom_target('composite_frag_qsb',
   input   : 'shaders/composite.frag',
   output  : 'composite.frag.qsb',
-  command : [qsb, '--glsl', '300 es,330', '--spirv', '-o', '@OUTPUT@', '@INPUT@'],
+  command : [qsb, '--glsl', '300 es,330', '-o', '@OUTPUT@', '@INPUT@'],
 )
 
 # Copy the QRC into the build directory so rcc resolves the .qsb references
