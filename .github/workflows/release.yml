@@ -30,7 +30,8 @@ jobs:
             meson ninja-build \
             libvulkan-dev \
             libsndfile1-dev \
-            libfftw3-dev
+            libfftw3-dev \
+            libxcb-cursor0
           echo "CMAKE_PREFIX_PATH=$QT_ROOT_DIR" >> $GITHUB_ENV
 
       - name: Build
@@ -113,7 +114,7 @@ jobs:
           CC=gcc CXX=g++ meson setup build
           meson compile -C build
 
-      - name: Package
+      - name: Stage distribution
         run: |
           DIST=noise-reactor-${{ github.ref_name }}-windows-x86_64
           mkdir -p $DIST
@@ -121,7 +122,7 @@ jobs:
           cp build/noise_reactor.exe $DIST/
 
           # Qt DLLs and platform plugins
-          windeployqt6 $DIST/noise_reactor.exe
+          windeployqt6 --no-translations $DIST/noise_reactor.exe
 
           # MinGW runtime and third-party DLLs (libsndfile, fftw, libstdc++, etc.)
           ldd build/noise_reactor.exe \
@@ -129,7 +130,11 @@ jobs:
             | awk '{ print $3 }' \
             | xargs -I{} cp {} $DIST/
 
-          zip -r ${DIST}.zip $DIST/
+      - name: Zip distribution
+        shell: pwsh
+        run: |
+          $dist = "noise-reactor-${{ github.ref_name }}-windows-x86_64"
+          Compress-Archive -Path $dist -DestinationPath "${dist}.zip"
 
       - uses: softprops/action-gh-release@v2
         with:
