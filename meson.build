@@ -83,19 +83,19 @@ shader_res = custom_target('shader_resources',
 
 # ── C++ sources ───────────────────────────────────────────────────────────────
 sources = files(
-  'kaos_reactor/main.cc',
-  'kaos_reactor/app.cc',
-  'kaos_reactor/audio_file.cc',
-  'kaos_reactor/audio_analyzer.cc',
-  'kaos_reactor/preview_widget.cc',
-  'kaos_reactor/waveform_widget.cc',
-  'kaos_reactor/cinematic_target_widget.cc',
+  'kaos/reactor/main.cc',
+  'kaos/reactor/app.cc',
+  'kaos/reactor/audio_file.cc',
+  'kaos/reactor/audio_analyzer.cc',
+  'kaos/reactor/preview_widget.cc',
+  'kaos/reactor/waveform_widget.cc',
+  'kaos/reactor/cinematic_target_widget.cc',
 )
 
 moc_files = qt6.preprocess(
-  moc_headers     : ['kaos_reactor/app.h', 'kaos_reactor/preview_widget.h',
-                     'kaos_reactor/waveform_widget.h',
-                     'kaos_reactor/cinematic_target_widget.h'],
+  moc_headers     : ['kaos/reactor/app.h', 'kaos/reactor/preview_widget.h',
+                     'kaos/reactor/waveform_widget.h',
+                     'kaos/reactor/cinematic_target_widget.h'],
   include_directories : inc,
   dependencies    : qt6_dep,
 )

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "kaos_reactor/audio_frame_data.h"
-#include "kaos_reactor/effect_params.h"
+#include "kaos/reactor/audio_frame_data.h"
+#include "kaos/reactor/effect_params.h"
 
 #include <QImage>
 #include <QPoint>

@@ -1,4 +1,4 @@
-#include "kaos_reactor/waveform_widget.h"
+#include "kaos/reactor/waveform_widget.h"
 
 #include <QMouseEvent>
 #include <QPainter>

@@ -1,4 +1,4 @@
-#include "kaos_reactor/audio_file.h"
+#include "kaos/reactor/audio_file.h"
 
 #include <sndfile.h>
 

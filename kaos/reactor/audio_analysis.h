@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kaos_reactor/audio_frame_data.h"
+#include "kaos/reactor/audio_frame_data.h"
 
 #include <vector>
 

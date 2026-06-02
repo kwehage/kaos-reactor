@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kaos_reactor/audio_analysis.h"
+#include "kaos/reactor/audio_analysis.h"
 
 #include <QWidget>
 #include <vector>

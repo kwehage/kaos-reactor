@@ -1,11 +1,11 @@
-#include "kaos_reactor/app.h"
+#include "kaos/reactor/app.h"
 
-#include "kaos_reactor/cinematic_target_widget.h"
-#include "kaos_reactor/audio_analyzer.h"
-#include "kaos_reactor/audio_file.h"
-#include "kaos_reactor/audio_frame_data.h"
-#include "kaos_reactor/preview_widget.h"
-#include "kaos_reactor/waveform_widget.h"
+#include "kaos/reactor/cinematic_target_widget.h"
+#include "kaos/reactor/audio_analyzer.h"
+#include "kaos/reactor/audio_file.h"
+#include "kaos/reactor/audio_frame_data.h"
+#include "kaos/reactor/preview_widget.h"
+#include "kaos/reactor/waveform_widget.h"
 
 #include <QAction>
 #include <QAudioOutput>

@@ -1,4 +1,4 @@
-#include "kaos_reactor/audio_analyzer.h"
+#include "kaos/reactor/audio_analyzer.h"
 
 #include <algorithm>
 #include <cmath>

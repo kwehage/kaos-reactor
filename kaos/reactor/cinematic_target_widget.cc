@@ -1,4 +1,4 @@
-#include "kaos_reactor/cinematic_target_widget.h"
+#include "kaos/reactor/cinematic_target_widget.h"
 
 #include <QMouseEvent>
 #include <QPainter>

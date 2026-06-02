@@ -1,4 +1,4 @@
-#include "kaos_reactor/app.h"
+#include "kaos/reactor/app.h"
 
 #include <QApplication>
 #include <QColor>

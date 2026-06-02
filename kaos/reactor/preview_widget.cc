@@ -1,4 +1,4 @@
-#include "kaos_reactor/preview_widget.h"
+#include "kaos/reactor/preview_widget.h"
 
 #include <QDragEnterEvent>
 #include <QDropEvent>

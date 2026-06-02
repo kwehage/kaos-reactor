@@ -1,7 +1,7 @@
 #pragma once
 
-#include "kaos_reactor/audio_analysis.h"
-#include "kaos_reactor/audio_file.h"
+#include "kaos/reactor/audio_analysis.h"
+#include "kaos/reactor/audio_file.h"
 
 namespace kaos::reactor {
 

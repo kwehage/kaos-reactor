@@ -1,7 +1,7 @@
 #pragma once
 
-#include "kaos_reactor/audio_analysis.h"
-#include "kaos_reactor/effect_params.h"
+#include "kaos/reactor/audio_analysis.h"
+#include "kaos/reactor/effect_params.h"
 
 #include <QFutureWatcher>
 #include <QMainWindow>
