@@ -1,8 +1,46 @@
 # kaos::reactor
 
-A desktop tool that turns an audio file and a static image into a music-reactive visual.
+kaos::reactor turns your music and a single still image into a
+music-reactive video — perfect for creating an eye-catching visual to accompany
+your track when publishing to social media. Unlike complicated general-purpose video editing
+software, kaos::reactor keeps it simple. There's no timeline to assemble and no animation to 
+keyframe: simply drag and drop an audio file and an image into the application, enable a 
+combination of GPU-accelerated audio-reactive image processing effects, preview the result 
+instantly with the playback scrubber, then export a ready-to-post MP4. Audio analysis and 
+rendering run locally and in real time. Switch on feedback for several effects at once and 
+they start reading from each other's output frame to frame, compounding into rich, chaotic, 
+ever-evolving patterns — one of the most distinctive and fun things to explore in kaos::reactor.
+
+kaos::reactor is completely free. Use it without restriction for as long as you like.
+If you find it useful and want to support development, you can buy me a coffee at the
+link below, or file bug reports and feature requests on the
+[GitHub issues page](https://github.com/kwehage/kaos-reactor/issues).
+
+[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=kwehage&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/kwehage)
 
 ![kaos::reactor](doc/kaos_reactor.png)
+
+---
+
+## Table of Contents
+
+- [How it works](#how-it-works)
+- [Effects](#effects)
+  - [UV warp effects](#uv-warp-effects)
+  - [Colour effects](#colour-effects)
+  - [Glow, texture, and atmosphere](#glow-texture-and-atmosphere)
+  - [Cinematic Zoom](#cinematic-zoom)
+- [Export](#export)
+- [Prerequisites](#prerequisites)
+  - [Arch Linux](#arch-linux)
+  - [Ubuntu / Debian (24.04+)](#ubuntu--debian-2404)
+  - [Fedora](#fedora)
+- [Download](#download)
+  - [Linux (AppImage)](#linux-appimage)
+  - [Windows](#windows)
+- [Build](#build)
+- [Run](#run)
+- [Supported formats](#supported-formats)
 
 ---
 
